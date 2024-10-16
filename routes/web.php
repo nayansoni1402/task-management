@@ -9,6 +9,7 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
+    return redirect()->route('tasks.index');
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -19,15 +20,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// Routes for admin role
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['web', 'auth'])->group(function () {
     Route::resource('tasks', TaskController::class);
 });
 
-// Routes for user role
-Route::middleware(['auth'])->group(function () {
-    Route::get('tasks', [TaskController::class, 'index']);
-    Route::get('tasks/{task}', [TaskController::class, 'show']);
-});
 
 require __DIR__.'/auth.php';

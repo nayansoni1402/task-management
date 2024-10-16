@@ -12,7 +12,9 @@ class TaskPolicy
 
     public function create(User $user)
     {
-        return in_array($user->role, ['admin', 'manager']);
+        // return $user->id === $task->user_id || $user->role === 'admin';
+
+        return in_array($user->role, ['admin', 'manager','user']);
     }
 
     public function view(User $user, Task $task)

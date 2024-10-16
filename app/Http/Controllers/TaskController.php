@@ -6,16 +6,25 @@ use App\Models\Task;
 use App\Models\Document;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
    
-        $tasks = auth()->user()->tasks;
+        if (auth()->user()->role === 'admin') {
+            $tasks = Task::all();
+        }else{
+
+            $tasks = auth()->user()->tasks;
+        }
         // dd($tasks->toarray());
         return view('tasks.index', compact('tasks')); 
     }
@@ -41,12 +50,16 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'priority' => 'required|string',
             'deadline' => 'required|date',
+            'status' => 'required|string',
+            'document' => 'nullable|file|mimes:pdf,doc,docx,png,jpg|max:2048',
         ]);
     
         $this->authorize('create', Task::class);
-
-        Task::create(array_merge($validated, ['user_id' => auth()->id()]));
-    
+        $task = Task::create(array_merge($validated, ['user_id' => auth()->id()]));
+        if ($request->hasFile('document')) {
+            $this->uploadDocument($request, $task);
+        }
+        
         return redirect()->route('tasks.index')->with('success', 'Task created successfully!');
     }
 
@@ -57,7 +70,7 @@ class TaskController extends Controller
     {
         $this->authorize('view', $task);
 
-        return view('tasks.show', compact('task')); 
+        return view('tasks.create', compact('task')); 
     }
 
     /**
@@ -67,7 +80,7 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
 
-        return view('tasks.edit', compact('task'));
+        return view('tasks.create', compact('task'));
     }
 
     /**
@@ -75,17 +88,23 @@ class TaskController extends Controller
      */
     public function update(Request $request, Task $task)
     {
+            // dd($request->toarray());
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'priority' => 'required|string',
             'deadline' => 'required|date',
+            'document' => 'nullable|file|mimes:pdf,doc,docx,png,jpg|max:2048',
         ]);
 
         $this->authorize('update', $task);
 
         $task->update($validated);
 
+        if ($request->hasFile('document')) {
+            $this->uploadDocument($request, $task);
+        }
         return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
     }
 
@@ -96,23 +115,28 @@ class TaskController extends Controller
     {
         $this->authorize('delete', $task);
 
+        if ($task->documents) {
+            foreach ($task->documents as $document) {
+                // Delete the file from storage
+                Storage::delete($document->file_path);
+                $document->delete(); // Delete the document record from the database
+            }
+        }
         $task->delete();
 
-        return redirect()->route('tasks.index')->with('success', 'Task deleted successfully!');
+        return redirect()->route('tasks.index')->with('error', 'Task deleted successfully!');
     }
 
     /**
      * Upload document for a task.
      */
-    public function uploadDocument(Request $request, Task $task)
+    protected function uploadDocument($request,$task)
     {
         $request->validate([
-            'document' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            'document' => 'required|file|mimes:pdf,doc,docx,png,jpg|max:2048',
         ]);
 
-        $this->authorize('upload', Document::class);
-
-        $path = $request->file('document')->store('documents'); 
+        $path = $request->file('document')->store('documents', 'public');
 
         $document = new Document();
         $document->task_id = $task->id;
