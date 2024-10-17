@@ -22,19 +22,19 @@ class UserSeeder extends Seeder
             ]);
 
             // Create manager user
-            User::create([
-                'name' => 'Manager User',
-                'email' => 'manager@mail.com',
-                'password' => bcrypt('manager'),
-                'role' => 'manager',
-            ]);
+            // User::create([
+            //     'name' => 'Manager User',
+            //     'email' => 'manager@mail.com',
+            //     'password' => bcrypt('manager'),
+            //     'role' => 'manager',
+            // ]);
 
-            // Create regular user
-            User::create([
-                'name' => 'Regular User',
-                'email' => 'user@mail.com',
-                'password' => bcrypt('user'),
-                'role' => 'user',
-            ]);
+            // // Create regular user
+            // User::create([
+            //     'name' => 'Regular User',
+            //     'email' => 'user@mail.com',
+            //     'password' => bcrypt('user'),
+            //     'role' => 'user',
+            // ]);
     }
 }

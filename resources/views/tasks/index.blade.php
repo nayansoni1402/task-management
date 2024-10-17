@@ -8,7 +8,7 @@
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <!-- Task List Title -->
-        <h1 class="h5">Task List</h1>
+        <h1 class="h5">Task List {{ $tasks->count() }}</h1>
 
         <!-- Create New Task Button -->
         <a href="{{ route('tasks.create') }}" class="btn btn-primary">Create New Task</a>
