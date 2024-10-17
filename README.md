@@ -95,7 +95,7 @@ This project is open-source and available under the [MIT License](LICENSE).
 
 For questions or feedback, please reach out to:
 
-**Himesh Audichya**  
+**Nayan soni**  
 Email: [nsoni6228@gmail.com](mailto:nsoni6228@gmail.com)
 
 ---
