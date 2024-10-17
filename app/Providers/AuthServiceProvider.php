@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Providers;
+
 use App\Models\Task;
 use App\Models\Document;
 use App\Policies\TaskPolicy;
@@ -28,6 +29,6 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $this->registerPolicies();
     }
 }

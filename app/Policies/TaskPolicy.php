@@ -19,6 +19,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task)
     {
+
         // Define logic to check if the user can view the task
         return $user->id === $task->user_id || $user->role === 'admin';
     }
@@ -32,6 +33,13 @@ class TaskPolicy
     public function delete(User $user, Task $task)
     {
         // Define logic to check if the user can delete the task
-        return $user->id === $task->user_id || $user->role === 'admin';
+        // return $user->id === $task->user_id || $user->role === 'admin';
+        return $user->role === 'admin';
     }
+
+    public function changeRole(User $user)
+    {
+        return in_array($user->role, ['admin']);
+    }
+
 }

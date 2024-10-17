@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\Document;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
@@ -18,15 +23,15 @@ class TaskController extends Controller
      */
     public function index()
     {
-   
+
         if (auth()->user()->role === 'admin') {
             $tasks = Task::all();
-        }else{
+        } else {
 
             $tasks = auth()->user()->tasks;
         }
         // dd($tasks->toarray());
-        return view('tasks.index', compact('tasks')); 
+        return view('tasks.index', compact('tasks'));
     }
 
     /**
@@ -34,9 +39,15 @@ class TaskController extends Controller
      */
     public function create()
     {
-        $this->authorize('create', Task::class);
+        try {
+            $this->authorize('create', Task::class);
 
-        return view('tasks.create');
+            return view('tasks.create');
+        } catch (AuthorizationException $e) {
+            return redirect()->route('tasks.index')->with('error', 'You are not authorized to create a task.');
+        } catch (\Exception $e) {
+            return redirect()->route('tasks.index')->with('error', 'An error occurred while trying to create a task.');
+        }
     }
 
     /**
@@ -53,13 +64,13 @@ class TaskController extends Controller
             'status' => 'required|string',
             'document' => 'nullable|file|mimes:pdf,doc,docx,png,jpg|max:2048',
         ]);
-    
+
         $this->authorize('create', Task::class);
         $task = Task::create(array_merge($validated, ['user_id' => auth()->id()]));
         if ($request->hasFile('document')) {
             $this->uploadDocument($request, $task);
         }
-        
+
         return redirect()->route('tasks.index')->with('success', 'Task created successfully!');
     }
 
@@ -70,7 +81,7 @@ class TaskController extends Controller
     {
         $this->authorize('view', $task);
 
-        return view('tasks.create', compact('task')); 
+        return view('tasks.create', compact('task'));
     }
 
     /**
@@ -88,24 +99,31 @@ class TaskController extends Controller
      */
     public function update(Request $request, Task $task)
     {
-            // dd($request->toarray());
+        // dd($request->toarray());
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'priority' => 'required|string',
+                'deadline' => 'required|date',
+                'document' => 'nullable|file|mimes:pdf,doc,docx,png,jpg|max:2048',
+            ]);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'priority' => 'required|string',
-            'deadline' => 'required|date',
-            'document' => 'nullable|file|mimes:pdf,doc,docx,png,jpg|max:2048',
-        ]);
+            $this->authorize('update', $task);
 
-        $this->authorize('update', $task);
+            $task->update($validated);
 
-        $task->update($validated);
-
-        if ($request->hasFile('document')) {
-            $this->uploadDocument($request, $task);
+            if ($request->hasFile('document')) {
+                $this->uploadDocument($request, $task);
+            }
+            return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
+        } catch (AuthorizationException $e) {
+            return redirect()->route('tasks.index')->with('error', 'This action is unauthorized.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->route('tasks.index')->withErrors($e->validator)->withInput();
+        } catch (\Exception $e) {
+            return redirect()->route('tasks.index')->with('error', 'An error occurred while updating the task.');
         }
-        return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
     }
 
     /**
@@ -113,24 +131,31 @@ class TaskController extends Controller
      */
     public function destroy(Task $task)
     {
-        $this->authorize('delete', $task);
 
-        if ($task->documents) {
-            foreach ($task->documents as $document) {
-                // Delete the file from storage
-                Storage::delete($document->file_path);
-                $document->delete(); // Delete the document record from the database
+        try {
+            $this->authorize('delete', $task);
+
+            if ($task->documents) {
+                foreach ($task->documents as $document) {
+                    // Delete the file from storage
+                    Storage::delete($document->file_path);
+                    $document->delete(); // Delete the document record from the database
+                }
             }
-        }
-        $task->delete();
+            $task->delete();
 
-        return redirect()->route('tasks.index')->with('error', 'Task deleted successfully!');
+            return redirect()->route('tasks.index')->with('success', 'Task deleted successfully!');
+        } catch (AuthorizationException $e) {
+            return redirect()->route('tasks.index')->with('error', 'This action is unauthorized.');
+        } catch (\Exception $e) {
+            return redirect()->route('tasks.index')->with('error', 'An error occurred while deleting the task.');
+        }
     }
 
     /**
      * Upload document for a task.
      */
-    protected function uploadDocument($request,$task)
+    protected function uploadDocument($request, $task)
     {
         $request->validate([
             'document' => 'required|file|mimes:pdf,doc,docx,png,jpg|max:2048',
@@ -140,9 +165,28 @@ class TaskController extends Controller
 
         $document = new Document();
         $document->task_id = $task->id;
-        $document->file_path = $path; 
+        $document->file_path = $path;
         $document->save();
 
         return back()->with('success', 'Document uploaded successfully.');
+    }
+
+    public function loginAsUser($userId)
+    {
+        try {
+            // Find the user by ID
+            $user = User::findOrFail($userId); 
+    
+            // Log the user in
+            Auth::login($user);
+    
+            return redirect()->route('tasks.index')->with('success', 'Successfully logged in as ' . $user->role);
+        } catch (ModelNotFoundException $e) {
+            return redirect()->route('tasks.index')->with('error', 'User not found.');
+        } catch (AuthorizationException $e) {
+            return redirect()->route('tasks.index')->with('error', 'This action is unauthorized.');
+        } catch (\Exception $e) {
+            return redirect()->route('tasks.index')->with('error', 'An error occurred while logging in.');
+        }
     }
 }
