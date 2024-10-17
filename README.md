@@ -3,7 +3,7 @@ Sure! Here’s a README file tailored for your Laravel project, the Task Managem
 ---
 
 #  Task Management System
-![Preview Image](https://github.com/nayansoni1402/task-management/Screenshot 2024-10-17 at 10.19.07 AM.png)
+![Preview Image](https://github.com/nayansoni1402/task-management/blob/main/Screenshot%202024-10-17%20at%2010.19.07%E2%80%AFAM.png?raw=true)
 
 ## Overview
 
